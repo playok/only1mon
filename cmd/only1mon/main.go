@@ -16,11 +16,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/only1mon/only1mon/internal/api"
-	"github.com/only1mon/only1mon/internal/collector"
-	"github.com/only1mon/only1mon/internal/config"
-	"github.com/only1mon/only1mon/internal/model"
-	"github.com/only1mon/only1mon/internal/store"
+	"github.com/playok/only1mon/internal/api"
+	"github.com/playok/only1mon/internal/collector"
+	"github.com/playok/only1mon/internal/config"
+	"github.com/playok/only1mon/internal/model"
+	"github.com/playok/only1mon/internal/store"
 )
 
 var version = "dev"

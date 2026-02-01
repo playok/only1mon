@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/only1mon/only1mon/internal/model"
+	"github.com/playok/only1mon/internal/model"
 	"github.com/shirou/gopsutil/v4/net"
 )
 

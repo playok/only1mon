@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/only1mon/only1mon/internal/model"
+	"github.com/playok/only1mon/internal/model"
 )
 
 // EBPFCollector provides kernel-level metrics via eBPF probes.

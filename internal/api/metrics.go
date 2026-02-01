@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/only1mon/only1mon/internal/collector"
-	"github.com/only1mon/only1mon/internal/store"
+	"github.com/playok/only1mon/internal/collector"
+	"github.com/playok/only1mon/internal/store"
 )
 
 type metricsAPI struct {

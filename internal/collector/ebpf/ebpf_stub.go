@@ -5,7 +5,7 @@ package ebpf
 import (
 	"context"
 
-	"github.com/only1mon/only1mon/internal/model"
+	"github.com/playok/only1mon/internal/model"
 )
 
 // EBPFCollector is a no-op stub for non-Linux or non-eBPF builds.

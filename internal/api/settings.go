@@ -6,8 +6,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/only1mon/only1mon/internal/collector"
-	"github.com/only1mon/only1mon/internal/store"
+	"github.com/playok/only1mon/internal/collector"
+	"github.com/playok/only1mon/internal/store"
 )
 
 type settingsAPI struct {

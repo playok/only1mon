@@ -1,4 +1,4 @@
-module github.com/only1mon/only1mon
+module github.com/playok/only1mon
 
 go 1.25.6
 

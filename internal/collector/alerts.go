@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/only1mon/only1mon/internal/model"
-	"github.com/only1mon/only1mon/internal/store"
+	"github.com/playok/only1mon/internal/model"
+	"github.com/playok/only1mon/internal/store"
 )
 
 // excludedMetricPrefixes lists metric prefixes for virtual/pseudo filesystems

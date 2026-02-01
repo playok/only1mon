@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/only1mon/only1mon/internal/collector"
+	"github.com/playok/only1mon/internal/collector"
 )
 
 type collectorsAPI struct {
