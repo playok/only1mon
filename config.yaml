@@ -1,0 +1,18 @@
+# Only1Mon configuration
+# ----------------------
+
+# HTTP listen address (host:port)
+listen: "127.0.0.1:9923"
+
+# SQLite database file path
+database: "only1mon.db"
+
+# Base path for reverse proxy (e.g. "/mon" when behind nginx)
+# Use "/" for direct access without a proxy prefix.
+base_path: "/"
+
+# PID file path (used by start/stop/status commands)
+pid_file: "only1mon.pid"
+
+# Log file path (daemon mode output; empty = stdout in foreground)
+log_file: "only1mon.log"

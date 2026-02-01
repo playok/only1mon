@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Only1Mon - System Monitor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/vendor/uPlot.min.css">
+    <link rel="stylesheet" href="/vendor/gridstack.min.css">
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body x-data="app" x-cloak>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="app-sidebar">
+            <div class="sidebar-brand">
+                <div class="sidebar-brand-icon">O1</div>
+                <div>
+                    <h1>Only1Mon</h1>
+                    <small>System Monitor</small>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="#" :class="{ active: page === 'dashboard' }" @click.prevent="page='dashboard'">
+                    <span class="nav-icon">&#9707;</span>
+                    <span x-text="$store.i18n.t('nav.dashboard')"></span>
+                </a>
+                <a href="#" :class="{ active: page === 'metrics' }" @click.prevent="page='metrics'">
+                    <span class="nav-icon">&#9776;</span>
+                    <span x-text="$store.i18n.t('nav.metrics')"></span>
+                </a>
+                <a href="#" :class="{ active: page === 'events' }" @click.prevent="page='events'">
+                    <span class="nav-icon">&#9888;</span>
+                    <span x-text="$store.i18n.t('nav.events')"></span>
+                </a>
+                <a href="#" :class="{ active: page === 'settings' }" @click.prevent="page='settings'">
+                    <span class="nav-icon">&#9881;</span>
+                    <span x-text="$store.i18n.t('nav.settings')"></span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="sidebar-status">
+                    <div class="status-dot" :class="{ connected: wsConnected }"></div>
+                    <span x-text="wsConnected ? $store.i18n.t('conn.connected') : $store.i18n.t('conn.disconnected')"></span>
+                </div>
+                <div class="lang-toggle">
+                    <button :class="{ active: $store.i18n.lang === 'en' }" @click="$store.i18n.setLang('en')">EN</button>
+                    <button :class="{ active: $store.i18n.lang === 'ko' }" @click="$store.i18n.setLang('ko')">KO</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main content wrapper -->
+        <div class="app-main-wrapper">
+            <!-- Dashboard toolbar -->
+            <div class="page-toolbar" x-show="page === 'dashboard'" x-transition.opacity>
+                <span class="page-toolbar-title" x-text="$store.i18n.t('nav.dashboard')"></span>
+                <select class="toolbar-select"
+                        :value="$store.dashboard.selectedLayout"
+                        @change="$store.dashboard.selectedLayout = $event.target.value; window.dashboardLoadLayout()">
+                    <option value="" x-text="$store.i18n.t('dash.new_layout')"></option>
+                    <template x-for="l in $store.dashboard.layouts" :key="l.id">
+                        <option :value="l.id" x-text="l.name" :selected="l.id == $store.dashboard.selectedLayout"></option>
+                    </template>
+                </select>
+                <span class="spacer"></span>
+                <button class="btn btn-sm" @click="window.dashboardSaveLayout()" x-text="$store.i18n.t('dash.save')"></button>
+                <button class="btn btn-sm btn-primary" @click="window.dashboardShowAddWidget()" x-text="$store.i18n.t('dash.add_widget')"></button>
+            </div>
+
+            <!-- Main scrollable content -->
+            <main class="app-main">
+                <!-- Dashboard page -->
+                <div x-show="page === 'dashboard'" x-data="dashboardPage" x-init="init()">
+                    <!-- Alert Event Grid -->
+                    <div class="alert-grid-section" x-data="alertGrid" x-init="init()">
+                        <div class="alert-grid-header">
+                            <span class="alert-grid-title" x-text="$store.i18n.t('alerts.title')"></span>
+                            <span class="alert-grid-count" x-show="alerts.length > 0" x-text="alerts.length"></span>
+                        </div>
+                        <div class="alert-grid">
+                            <template x-if="alerts.length === 0">
+                                <div class="alert-grid-empty" x-text="$store.i18n.t('alerts.no_alerts')"></div>
+                            </template>
+                            <template x-for="a in alerts" :key="a.id">
+                                <div class="alert-row" :class="'alert-' + a.severity">
+                                    <div class="alert-severity-badge" :class="'severity-' + a.severity"
+                                         x-text="$store.i18n.t('alerts.severity.' + a.severity)"></div>
+                                    <div class="alert-content">
+                                        <span class="alert-message" x-text="$store.i18n.lang === 'ko' ? a.message_ko : a.message_en"></span>
+                                        <span class="alert-metric" x-text="a.metric"></span>
+                                    </div>
+                                    <div class="alert-time" x-text="formatAlertTime(a.timestamp)"></div>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <div class="grid-stack" id="dashboard-grid"></div>
+
+                    <!-- Context Menu -->
+                    <div class="widget-ctx-menu"
+                         x-show="ctxMenu.show"
+                         :style="'left:' + ctxMenu.x + 'px;top:' + ctxMenu.y + 'px'"
+                         x-transition.opacity.duration.100ms
+                         @click.stop>
+                        <button class="ctx-item" @click="ctxEdit()" x-text="$store.i18n.t('widget.edit')"></button>
+                        <button class="ctx-item ctx-item-danger" @click="ctxRemove()" x-text="$store.i18n.t('widget.remove')"></button>
+                    </div>
+
+                    <!-- Edit Widget Modal -->
+                    <div class="modal-overlay" x-show="$store.dashboard.showEditWidget" @click.self="$store.dashboard.showEditWidget=false" x-transition>
+                        <div class="modal modal-wide">
+                            <h3 x-text="$store.i18n.t('widget.edit_title')"></h3>
+                            <div class="form-group">
+                                <label x-text="$store.i18n.t('widget.title_label')"></label>
+                                <input type="text" x-model="editTitle" :placeholder="$store.i18n.t('widget.title_placeholder')">
+                            </div>
+
+                            <!-- Metric picker tree (same as add modal) -->
+                            <div class="form-group">
+                                <label x-text="$store.i18n.t('widget.select_metrics')"></label>
+                                <div class="metric-picker">
+                                    <template x-if="metricGroups.length === 0">
+                                        <div class="text-muted text-sm" style="padding:14px" x-text="$store.i18n.t('widget.loading')"></div>
+                                    </template>
+                                    <template x-for="group in metricGroups" :key="group.label">
+                                        <div class="mp-group">
+                                            <div class="mp-group-header" @click="group._open = !group._open">
+                                                <span class="mp-arrow" :class="{ open: group._open }">&#9654;</span>
+                                                <span class="mp-group-label" x-text="group.label"></span>
+                                                <span class="mp-count"
+                                                      x-text="countGroupSelected(group) + ' ' + $store.i18n.t('widget.selected')"
+                                                      x-show="countGroupSelected(group) > 0"></span>
+                                            </div>
+                                            <div class="mp-group-body" x-show="group._open" x-transition.duration.150ms>
+                                                <template x-if="group.metrics && group.metrics.length">
+                                                    <div class="mp-metrics">
+                                                        <template x-for="m in group.metrics" :key="m.name">
+                                                            <label class="mp-metric">
+                                                                <input type="checkbox" :value="m.name" :checked="selectedMetrics.includes(m.name)"
+                                                                       @change="toggleMetric(m.name)">
+                                                                <div class="mp-metric-info">
+                                                                    <span class="mp-metric-name" x-text="m.name"></span>
+                                                                    <span class="mp-metric-desc" x-show="m.description"
+                                                                          x-text="$store.i18n.lang === 'ko' && m.description_ko ? m.description_ko : m.description"></span>
+                                                                    <span class="mp-metric-unit" x-show="m.unit"
+                                                                          x-text="$store.i18n.t('widget.unit_prefix') + m.unit"></span>
+                                                                </div>
+                                                            </label>
+                                                        </template>
+                                                    </div>
+                                                </template>
+                                                <template x-if="group.children && group.children.length">
+                                                    <div>
+                                                        <template x-for="sub in group.children" :key="sub.label">
+                                                            <div class="mp-subgroup">
+                                                                <div class="mp-subgroup-header" @click="sub._open = !sub._open">
+                                                                    <span class="mp-arrow mp-arrow-sm" :class="{ open: sub._open }">&#9654;</span>
+                                                                    <span class="mp-subgroup-label" x-text="sub.label"></span>
+                                                                    <button class="mp-select-all" @click.stop="toggleSubGroup(sub)">
+                                                                        <span x-text="isSubGroupAllSelected(sub) ? $store.i18n.t('widget.deselect_all') : $store.i18n.t('widget.select_all')"></span>
+                                                                    </button>
+                                                                </div>
+                                                                <div class="mp-metrics" x-show="sub._open" x-transition.duration.100ms>
+                                                                    <template x-for="m in sub.metrics" :key="m.name">
+                                                                        <label class="mp-metric">
+                                                                            <input type="checkbox" :value="m.name" :checked="selectedMetrics.includes(m.name)"
+                                                                                   @change="toggleMetric(m.name)">
+                                                                            <div class="mp-metric-info">
+                                                                                <span class="mp-metric-name" x-text="m.name"></span>
+                                                                                <span class="mp-metric-desc" x-show="m.description"
+                                                                                      x-text="$store.i18n.lang === 'ko' && m.description_ko ? m.description_ko : m.description"></span>
+                                                                                <span class="mp-metric-unit" x-show="m.unit"
+                                                                                      x-text="$store.i18n.t('widget.unit_prefix') + m.unit"></span>
+                                                                            </div>
+                                                                        </label>
+                                                                    </template>
+                                                                </div>
+                                                            </div>
+                                                        </template>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- Selected summary -->
+                            <div class="mp-selected-summary" x-show="selectedMetrics.length > 0">
+                                <span class="text-sm text-muted" x-text="selectedMetrics.length + ' ' + $store.i18n.t('widget.metrics_selected')"></span>
+                                <div class="mp-selected-tags">
+                                    <template x-for="m in selectedMetrics" :key="m">
+                                        <span class="mp-tag">
+                                            <span x-text="m"></span>
+                                            <button @click="toggleMetric(m)">&times;</button>
+                                        </span>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <div class="flex gap-2" style="justify-content:flex-end;margin-top:16px">
+                                <button class="btn btn-sm" @click="$store.dashboard.showEditWidget=false" x-text="$store.i18n.t('widget.cancel')"></button>
+                                <button class="btn btn-sm btn-primary" @click="applyEditWidget()"
+                                        :disabled="selectedMetrics.length === 0" x-text="$store.i18n.t('widget.edit')"></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Add Widget Modal -->
+                    <div class="modal-overlay" x-show="$store.dashboard.showAddWidget" @click.self="$store.dashboard.showAddWidget=false" x-transition>
+                        <div class="modal modal-wide">
+                            <h3 x-text="$store.i18n.t('widget.add_title')"></h3>
+                            <div class="form-group">
+                                <label x-text="$store.i18n.t('widget.title_label')"></label>
+                                <input type="text" x-model="newWidget.title" :placeholder="$store.i18n.t('widget.title_placeholder')">
+                            </div>
+
+                            <!-- Metric picker tree -->
+                            <div class="form-group">
+                                <label x-text="$store.i18n.t('widget.select_metrics')"></label>
+                                <div class="metric-picker">
+                                    <template x-if="metricGroups.length === 0">
+                                        <div class="text-muted text-sm" style="padding:14px" x-text="$store.i18n.t('widget.loading')"></div>
+                                    </template>
+                                    <template x-for="group in metricGroups" :key="group.label">
+                                        <div class="mp-group">
+                                            <div class="mp-group-header" @click="group._open = !group._open">
+                                                <span class="mp-arrow" :class="{ open: group._open }">&#9654;</span>
+                                                <span class="mp-group-label" x-text="group.label"></span>
+                                                <span class="mp-count"
+                                                      x-text="countGroupSelected(group) + ' ' + $store.i18n.t('widget.selected')"
+                                                      x-show="countGroupSelected(group) > 0"></span>
+                                            </div>
+                                            <div class="mp-group-body" x-show="group._open" x-transition.duration.150ms>
+                                                <template x-if="group.metrics && group.metrics.length">
+                                                    <div class="mp-metrics">
+                                                        <template x-for="m in group.metrics" :key="m.name">
+                                                            <label class="mp-metric">
+                                                                <input type="checkbox" :value="m.name" :checked="selectedMetrics.includes(m.name)"
+                                                                       @change="toggleMetric(m.name)">
+                                                                <div class="mp-metric-info">
+                                                                    <span class="mp-metric-name" x-text="m.name"></span>
+                                                                    <span class="mp-metric-desc" x-show="m.description"
+                                                                          x-text="$store.i18n.lang === 'ko' && m.description_ko ? m.description_ko : m.description"></span>
+                                                                    <span class="mp-metric-unit" x-show="m.unit"
+                                                                          x-text="$store.i18n.t('widget.unit_prefix') + m.unit"></span>
+                                                                </div>
+                                                            </label>
+                                                        </template>
+                                                    </div>
+                                                </template>
+                                                <template x-if="group.children && group.children.length">
+                                                    <div>
+                                                        <template x-for="(sub, subIdx) in group.children" :key="sub.label">
+                                                            <div class="mp-subgroup">
+                                                                <div class="mp-subgroup-header" @click="sub._open = !sub._open">
+                                                                    <span class="mp-arrow mp-arrow-sm" :class="{ open: sub._open }">&#9654;</span>
+                                                                    <span class="mp-subgroup-label" x-text="sub.label"></span>
+                                                                    <button class="mp-add-table" @click.stop="addTableWidget(sub)"
+                                                                            x-text="$store.i18n.t('widget.add_table')"></button>
+                                                                    <button class="mp-select-all" @click.stop="toggleSubGroup(sub)">
+                                                                        <span x-text="isSubGroupAllSelected(sub) ? $store.i18n.t('widget.deselect_all') : $store.i18n.t('widget.select_all')"></span>
+                                                                    </button>
+                                                                </div>
+                                                                <div class="mp-metrics" x-show="sub._open" x-transition.duration.100ms>
+                                                                    <template x-for="m in sub.metrics" :key="m.name">
+                                                                        <label class="mp-metric">
+                                                                            <input type="checkbox" :value="m.name" :checked="selectedMetrics.includes(m.name)"
+                                                                                   @change="toggleMetric(m.name)">
+                                                                            <div class="mp-metric-info">
+                                                                                <span class="mp-metric-name" x-text="m.name"></span>
+                                                                                <span class="mp-metric-desc" x-show="m.description"
+                                                                                      x-text="$store.i18n.lang === 'ko' && m.description_ko ? m.description_ko : m.description"></span>
+                                                                                <span class="mp-metric-unit" x-show="m.unit"
+                                                                                      x-text="$store.i18n.t('widget.unit_prefix') + m.unit"></span>
+                                                                            </div>
+                                                                        </label>
+                                                                    </template>
+                                                                </div>
+                                                            </div>
+                                                        </template>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- Selected summary -->
+                            <div class="mp-selected-summary" x-show="selectedMetrics.length > 0">
+                                <span class="text-sm text-muted" x-text="selectedMetrics.length + ' ' + $store.i18n.t('widget.metrics_selected')"></span>
+                                <div class="mp-selected-tags">
+                                    <template x-for="m in selectedMetrics" :key="m">
+                                        <span class="mp-tag">
+                                            <span x-text="m"></span>
+                                            <button @click="toggleMetric(m)">&times;</button>
+                                        </span>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <div class="flex gap-2" style="justify-content:space-between;margin-top:16px">
+                                <div class="flex gap-2">
+                                    <button class="btn btn-sm btn-accent" @click="addTopWidget()" x-text="$store.i18n.t('widget.add_top')"></button>
+                                    <button class="btn btn-sm btn-accent" @click="addIoTopWidget()" x-text="$store.i18n.t('widget.add_iotop')"></button>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button class="btn btn-sm" @click="$store.dashboard.showAddWidget=false" x-text="$store.i18n.t('widget.cancel')"></button>
+                                    <button class="btn btn-sm btn-primary" @click="addWidget()"
+                                            :disabled="selectedMetrics.length === 0" x-text="$store.i18n.t('widget.add_btn')"></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Metrics page -->
+                <div x-show="page === 'metrics'" x-data="metricsPage" x-init="init()">
+                    <div class="page-header">
+                        <h2 x-text="$store.i18n.t('metrics.title')"></h2>
+                    </div>
+                    <template x-for="c in collectors" :key="c.id">
+                        <div class="collector-card">
+                            <div class="collector-item" @click="toggleExpand(c.id)">
+                                <div class="collector-info">
+                                    <div class="flex items-center">
+                                        <span class="mp-arrow" :class="{ open: expandedCollector === c.id }">&#9654;</span>
+                                        <h3 x-text="c.name"></h3>
+                                        <span class="impact-badge"
+                                              :class="'impact-' + c.impact"
+                                              x-text="$store.i18n.t('impact.' + c.impact)"></span>
+                                        <span class="metric-count-badge" x-show="c.metric_states && someMetricsDisabled(c)"
+                                              x-text="enabledMetricCount(c) + '/' + c.metric_states.length"></span>
+                                    </div>
+                                    <p x-text="c.description"></p>
+                                    <p class="warning-text" x-show="c.warning" x-text="c.warning"></p>
+                                    <div class="collector-metrics" x-show="expandedCollector !== c.id">
+                                        <template x-for="m in (c.metrics || []).slice(0, 6)" :key="m">
+                                            <span class="metric-tag" x-text="m"></span>
+                                        </template>
+                                        <span class="metric-tag" x-show="(c.metrics || []).length > 6"
+                                              x-text="'+' + ((c.metrics || []).length - 6) + ' ' + $store.i18n.t('metrics.more')"></span>
+                                    </div>
+                                </div>
+                                <label class="toggle" @click.stop>
+                                    <input type="checkbox" :checked="c.enabled" @change="toggle(c)">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <!-- Accordion: per-metric toggles -->
+                            <div class="metric-accordion" x-show="expandedCollector === c.id" x-transition.duration.150ms>
+                                <div class="metric-accordion-hint" x-show="!c.enabled"
+                                     x-text="$store.i18n.t('metrics.collector_off_hint')"></div>
+                                <div class="metric-accordion-toolbar" x-show="c.enabled && c.metric_states && c.metric_states.length > 0">
+                                    <button class="btn btn-sm" @click="toggleAllMetrics(c, true)"
+                                            x-text="$store.i18n.t('metrics.select_all')"></button>
+                                    <button class="btn btn-sm" @click="toggleAllMetrics(c, false)"
+                                            x-text="$store.i18n.t('metrics.deselect_all')"></button>
+                                </div>
+                                <template x-if="c.enabled && c.metric_states">
+                                    <div class="metric-toggle-list">
+                                        <template x-for="ms in c.metric_states" :key="ms.name">
+                                            <div class="metric-toggle-row">
+                                                <div class="metric-toggle-info">
+                                                    <span class="metric-toggle-name" x-text="ms.name"></span>
+                                                    <span class="metric-toggle-desc"
+                                                          x-show="ms.description"
+                                                          x-text="$store.i18n.lang === 'ko' && ms.description_ko ? ms.description_ko : ms.description"></span>
+                                                    <span class="metric-toggle-unit"
+                                                          x-show="ms.unit"
+                                                          x-text="$store.i18n.t('widget.unit_prefix') + ms.unit"></span>
+                                                </div>
+                                                <label class="toggle toggle-sm" @click.stop>
+                                                    <input type="checkbox" :checked="ms.enabled" @change="toggleMetric(c, ms)">
+                                                    <span class="toggle-slider"></span>
+                                                </label>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Events page -->
+                <div x-show="page === 'events'" x-data="eventsPage" x-init="init()">
+                    <div class="page-header flex justify-between items-center">
+                        <h2 x-text="$store.i18n.t('events.title')"></h2>
+                        <button class="btn btn-sm btn-primary" @click="openAdd()" x-text="$store.i18n.t('events.add_rule')"></button>
+                    </div>
+
+                    <template x-if="rules.length === 0">
+                        <div class="card" style="text-align:center;padding:32px">
+                            <span class="text-muted" x-text="$store.i18n.t('events.no_rules')"></span>
+                        </div>
+                    </template>
+
+                    <div class="rule-list">
+                        <template x-for="rule in rules" :key="rule.id">
+                            <div class="rule-card" :class="{ 'rule-disabled': !rule.enabled }">
+                                <div class="rule-card-main">
+                                    <div class="rule-info">
+                                        <span class="rule-pattern" x-text="rule.metric_pattern"></span>
+                                        <span class="rule-condition">
+                                            <span x-text="operatorLabel(rule.operator)"></span>
+                                            <span x-text="rule.threshold"></span>
+                                        </span>
+                                        <span class="alert-severity-badge" :class="'severity-' + rule.severity"
+                                              x-text="$store.i18n.t('alerts.severity.' + rule.severity)"></span>
+                                    </div>
+                                    <div class="rule-message text-muted text-xs"
+                                         x-text="$store.i18n.lang === 'ko' ? rule.message_ko : rule.message_en"></div>
+                                </div>
+                                <div class="rule-actions">
+                                    <label class="toggle toggle-sm" @click.stop>
+                                        <input type="checkbox" :checked="rule.enabled" @change="toggleEnabled(rule)">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                    <button class="btn btn-sm btn-ghost" @click="openEdit(rule)" x-text="$store.i18n.t('events.edit')"></button>
+                                    <button class="btn btn-sm btn-danger" @click="deleteRule(rule)" x-text="$store.i18n.t('events.delete')"></button>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- Add/Edit Rule Modal -->
+                    <div class="modal-overlay" x-show="showModal" @click.self="showModal=false" x-transition>
+                        <div class="modal modal-wide">
+                            <h3 x-text="editing ? $store.i18n.t('events.modal_edit') : $store.i18n.t('events.modal_add')"></h3>
+                            <div class="form-group">
+                                <label x-text="$store.i18n.t('events.metric_pattern')"></label>
+                                <input type="text" x-model="form.metric_pattern"
+                                       :placeholder="$store.i18n.t('events.metric_pattern_hint')">
+                            </div>
+                            <div class="rule-form-row">
+                                <div class="form-group" style="flex:1">
+                                    <label x-text="$store.i18n.t('events.operator')"></label>
+                                    <select x-model="form.operator">
+                                        <option value="gt">&gt; (greater than)</option>
+                                        <option value="gte">&gt;= (greater or equal)</option>
+                                        <option value="lt">&lt; (less than)</option>
+                                        <option value="lte">&lt;= (less or equal)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" style="flex:1">
+                                    <label x-text="$store.i18n.t('events.threshold')"></label>
+                                    <input type="number" step="any" x-model="form.threshold">
+                                </div>
+                                <div class="form-group" style="flex:1">
+                                    <label x-text="$store.i18n.t('events.severity')"></label>
+                                    <select x-model="form.severity">
+                                        <option value="critical">Critical</option>
+                                        <option value="warning">Warning</option>
+                                        <option value="info">Info</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label x-text="$store.i18n.t('events.message_en')"></label>
+                                <input type="text" x-model="form.message_en"
+                                       :placeholder="$store.i18n.t('events.message_hint')">
+                            </div>
+                            <div class="form-group">
+                                <label x-text="$store.i18n.t('events.message_ko')"></label>
+                                <input type="text" x-model="form.message_ko"
+                                       :placeholder="$store.i18n.t('events.message_hint')">
+                            </div>
+                            <div class="form-group">
+                                <label class="rule-enabled-label">
+                                    <input type="checkbox" x-model="form.enabled" style="accent-color:var(--accent);width:16px;height:16px;margin-right:8px">
+                                    <span x-text="$store.i18n.t('events.enabled')"></span>
+                                </label>
+                            </div>
+                            <div class="flex gap-2" style="justify-content:flex-end;margin-top:16px">
+                                <button class="btn btn-sm" @click="showModal=false" x-text="$store.i18n.t('events.cancel')"></button>
+                                <button class="btn btn-sm btn-primary" @click="saveRule()"
+                                        :disabled="!form.metric_pattern" x-text="$store.i18n.t('events.save')"></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Settings page -->
+                <div x-show="page === 'settings'" x-data="settingsPage" x-init="init()">
+                    <div class="page-header">
+                        <h2 x-text="$store.i18n.t('settings.title')"></h2>
+                    </div>
+                    <div class="card">
+                        <div class="settings-grid">
+                            <div class="form-group">
+                                <label x-text="$store.i18n.t('settings.retention')"></label>
+                                <input type="number" x-model="settings.retention_hours" min="1" max="8760">
+                            </div>
+                            <div class="form-group">
+                                <label x-text="$store.i18n.t('settings.interval')"></label>
+                                <input type="number" x-model="settings.collect_interval" min="1" max="60">
+                            </div>
+                            <div class="form-group">
+                                <label x-text="$store.i18n.t('settings.top_process_count')"></label>
+                                <input type="number" x-model="settings.top_process_count" min="1" max="50">
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" @click="save()" x-text="$store.i18n.t('settings.save')"></button>
+                    </div>
+
+                    <!-- Chart Colors -->
+                    <div class="card" style="margin-top: 16px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                            <h3 class="card-section-title" style="margin: 0;" x-text="$store.i18n.t('settings.chart_colors')"></h3>
+                            <button class="btn btn-sm btn-ghost" @click="resetColors()" x-text="$store.i18n.t('settings.color_reset')"></button>
+                        </div>
+                        <div class="color-picker-grid">
+                            <template x-for="(color, idx) in chartColors" :key="idx">
+                                <div class="color-picker-item">
+                                    <span class="color-picker-index" x-text="idx + 1"></span>
+                                    <input type="color" class="color-picker-input" :value="color"
+                                           @input="chartColors[idx] = $event.target.value">
+                                    <span class="color-picker-hex" x-text="color"></span>
+                                    <span class="color-picker-preview" :style="'background:' + color"></span>
+                                </div>
+                            </template>
+                        </div>
+                    </div>
+
+                    <!-- Database Info -->
+                    <div class="card" style="margin-top: 16px;">
+                        <h3 class="card-section-title" x-text="$store.i18n.t('settings.db_info')"></h3>
+                        <div class="db-info-grid">
+                            <div class="db-info-item">
+                                <span class="db-info-label" x-text="$store.i18n.t('settings.db_path')"></span>
+                                <span class="db-info-value mono" x-text="dbInfo.path"></span>
+                            </div>
+                            <div class="db-info-item">
+                                <span class="db-info-label" x-text="$store.i18n.t('settings.db_size')"></span>
+                                <span class="db-info-value" x-text="formatBytes(dbInfo.size)"></span>
+                            </div>
+                            <div class="db-info-item">
+                                <span class="db-info-label" x-text="$store.i18n.t('settings.db_wal_size')"></span>
+                                <span class="db-info-value" x-text="formatBytes(dbInfo.wal_size || 0)"></span>
+                            </div>
+                            <div class="db-info-item">
+                                <span class="db-info-label" x-text="$store.i18n.t('settings.db_total_size')"></span>
+                                <span class="db-info-value db-info-total" x-text="formatBytes(dbTotalSize)"></span>
+                            </div>
+                        </div>
+                        <div style="margin-top: 12px;">
+                            <button class="btn btn-danger" @click="purgeData()" x-text="$store.i18n.t('settings.db_purge')"></button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Toast container -->
+    <div class="toast-container" x-data="toasts">
+        <template x-for="t in list" :key="t.id">
+            <div class="toast" :class="t.type" x-text="t.msg" x-transition
+                 x-init="setTimeout(() => remove(t.id), 3000)"></div>
+        </template>
+    </div>
+
+    <script src="/vendor/alpine.min.js" defer></script>
+    <script src="/vendor/uPlot.iife.min.js"></script>
+    <script src="/vendor/gridstack-all.js"></script>
+    <script src="/js/lib/i18n.js"></script>
+    <script src="/js/lib/api-client.js"></script>
+    <script src="/js/lib/ws-client.js"></script>
+    <script src="/js/components/chart-widget.js"></script>
+    <script src="/js/components/table-widget.js"></script>
+    <script src="/js/components/top-widget.js"></script>
+    <script src="/js/components/iotop-widget.js"></script>
+    <script src="/js/pages/dashboard.js"></script>
+    <script src="/js/pages/metrics.js"></script>
+    <script src="/js/pages/events.js"></script>
+    <script src="/js/pages/settings.js"></script>
+    <script src="/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+# Build output
+build/
+
+# Runtime files
+*.db
+*.db-wal
+*.db-shm
+*.pid
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
