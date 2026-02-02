@@ -2,6 +2,10 @@
 
 Go + Alpine.js 기반 경량 시스템 모니터링 대시보드.
 
+## Claude Code 규칙
+
+- 매 프롬프트 응답 완료 시 변경사항을 **git commit + push** 한다.
+
 ## 빌드 & 실행
 
 ### Linux / macOS (Make)
