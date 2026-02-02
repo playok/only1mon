@@ -59,6 +59,11 @@ func NewRouter(registry *collector.Registry, db *store.Store, hub *Hub, alertEng
 	// WebSocket
 	mux.HandleFunc("GET /api/v1/ws", hub.HandleWS)
 
+	// Catch-all for unmatched API routes — return JSON 404 instead of file server
+	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "not found", "path": r.URL.Path})
+	})
+
 	// Static files (embedded) — inject base_path into index.html
 	mux.Handle("/", web.StaticHandler(basePath))
 
@@ -70,17 +75,33 @@ func NewRouter(registry *collector.Registry, db *store.Store, hub *Hub, alertEng
 		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Strip base path prefix from the URL
 			if strings.HasPrefix(r.URL.Path, basePath) {
-				r.URL.Path = strings.TrimPrefix(r.URL.Path, basePath)
-				if r.URL.Path == "" {
-					r.URL.Path = "/"
+				p := strings.TrimPrefix(r.URL.Path, basePath)
+				if p == "" {
+					p = "/"
 				}
-				r.URL.RawPath = strings.TrimPrefix(r.URL.RawPath, basePath)
+				// Create a shallow copy so the original request is not mutated
+				r2 := r.Clone(r.Context())
+				r2.URL.Path = p
+				r2.URL.RawPath = strings.TrimPrefix(r.URL.RawPath, basePath)
+				inner.ServeHTTP(w, r2)
+				return
 			}
 			inner.ServeHTTP(w, r)
 		})
 	}
 
 	return withMiddleware(handler)
+}
+
+// statusWriter wraps http.ResponseWriter to capture the status code.
+type statusWriter struct {
+	http.ResponseWriter
+	status int
+}
+
+func (w *statusWriter) WriteHeader(code int) {
+	w.status = code
+	w.ResponseWriter.WriteHeader(code)
 }
 
 func withMiddleware(next http.Handler) http.Handler {
@@ -105,8 +126,9 @@ func withMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		next.ServeHTTP(w, r)
+		sw := &statusWriter{ResponseWriter: w, status: http.StatusOK}
+		next.ServeHTTP(sw, r)
 
-		log.Printf("[http] %s %s %s", r.Method, r.URL.Path, time.Since(start))
+		log.Printf("[http] %d %s %s %s", sw.status, r.Method, r.RequestURI, time.Since(start))
 	})
 }
