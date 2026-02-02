@@ -24,76 +24,71 @@ func NewRouter(registry *collector.Registry, db *store.Store, hub *Hub, alertEng
 	da := &dashboardAPI{store: db}
 	aa := &alertsAPI{alertEngine: alertEngine, store: db}
 
-	// Collectors
-	mux.HandleFunc("GET /api/v1/collectors", ca.list)
-	mux.HandleFunc("PUT /api/v1/collectors/{id}/enable", ca.enable)
-	mux.HandleFunc("PUT /api/v1/collectors/{id}/disable", ca.disable)
-	mux.HandleFunc("PUT /api/v1/collectors/{id}/metrics/enable", ca.enableCollectorMetrics)
-	mux.HandleFunc("PUT /api/v1/collectors/{id}/metrics/disable", ca.disableCollectorMetrics)
-
-	// Metrics
-	mux.HandleFunc("GET /api/v1/metrics/available", ma.available)
-	mux.HandleFunc("GET /api/v1/metrics/query", ma.query)
-	mux.HandleFunc("PUT /api/v1/metrics/state/{rest...}", ca.metricState)
-	mux.HandleFunc("PUT /api/v1/metrics/ensure-enabled", ca.ensureMetricsEnabled)
-
-	// Settings
-	mux.HandleFunc("GET /api/v1/settings", sa.list)
-	mux.HandleFunc("PUT /api/v1/settings", sa.update)
-	mux.HandleFunc("GET /api/v1/settings/db-info", sa.dbInfo)
-	mux.HandleFunc("DELETE /api/v1/settings/db-purge", sa.dbPurge)
-
-	// Dashboard layouts
-	mux.HandleFunc("GET /api/v1/dashboard/layouts", da.list)
-	mux.HandleFunc("POST /api/v1/dashboard/layouts", da.create)
-	mux.HandleFunc("GET /api/v1/dashboard/layouts/{id}", da.get)
-	mux.HandleFunc("PUT /api/v1/dashboard/layouts/{id}", da.update)
-	mux.HandleFunc("DELETE /api/v1/dashboard/layouts/{id}", da.delete)
-
-	// Alerts
-	mux.HandleFunc("GET /api/v1/alerts", aa.list)
-
-	// Alert Rules
-	mux.HandleFunc("GET /api/v1/alert-rules", aa.listRules)
-	mux.HandleFunc("POST /api/v1/alert-rules", aa.createRule)
-	mux.HandleFunc("PUT /api/v1/alert-rules/{id}", aa.updateRule)
-	mux.HandleFunc("DELETE /api/v1/alert-rules/{id}", aa.deleteRule)
-
-	// WebSocket
-	mux.HandleFunc("GET /api/v1/ws", hub.HandleWS)
-
-	// Catch-all for unmatched API routes — return JSON 404 instead of file server
-	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": "not found", "path": r.URL.Path})
-	})
-
-	// Static files (embedded) — inject base_path into index.html
-	mux.Handle("/", web.StaticHandler(basePath))
-
-	var handler http.Handler = mux
-
-	// If base_path is set, strip the prefix so internal routing works unchanged
+	// Prefix for direct access (empty when base_path is "/")
+	bp := ""
 	if basePath != "/" && basePath != "" {
-		inner := handler
-		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Strip base path prefix from the URL
-			if strings.HasPrefix(r.URL.Path, basePath) {
-				p := strings.TrimPrefix(r.URL.Path, basePath)
-				if p == "" {
-					p = "/"
-				}
-				// Create a shallow copy so the original request is not mutated
-				r2 := r.Clone(r.Context())
-				r2.URL.Path = p
-				r2.URL.RawPath = strings.TrimPrefix(r.URL.RawPath, basePath)
-				inner.ServeHTTP(w, r2)
-				return
-			}
-			inner.ServeHTTP(w, r)
-		})
+		bp = basePath
 	}
 
-	return withMiddleware(handler)
+	// register adds a route and, if base_path is set, a prefixed duplicate.
+	register := func(pattern string, handler func(http.ResponseWriter, *http.Request)) {
+		mux.HandleFunc(pattern, handler)
+		if bp != "" {
+			method, path, ok := strings.Cut(pattern, " ")
+			if ok {
+				mux.HandleFunc(method+" "+bp+path, handler)
+			} else {
+				mux.HandleFunc(bp+pattern, handler)
+			}
+		}
+	}
+
+	// Collectors
+	register("GET /api/v1/collectors", ca.list)
+	register("PUT /api/v1/collectors/{id}/enable", ca.enable)
+	register("PUT /api/v1/collectors/{id}/disable", ca.disable)
+	register("PUT /api/v1/collectors/{id}/metrics/enable", ca.enableCollectorMetrics)
+	register("PUT /api/v1/collectors/{id}/metrics/disable", ca.disableCollectorMetrics)
+
+	// Metrics
+	register("GET /api/v1/metrics/available", ma.available)
+	register("GET /api/v1/metrics/query", ma.query)
+	register("PUT /api/v1/metrics/state/{rest...}", ca.metricState)
+	register("PUT /api/v1/metrics/ensure-enabled", ca.ensureMetricsEnabled)
+
+	// Settings
+	register("GET /api/v1/settings", sa.list)
+	register("PUT /api/v1/settings", sa.update)
+	register("GET /api/v1/settings/db-info", sa.dbInfo)
+	register("DELETE /api/v1/settings/db-purge", sa.dbPurge)
+
+	// Dashboard layouts
+	register("GET /api/v1/dashboard/layouts", da.list)
+	register("POST /api/v1/dashboard/layouts", da.create)
+	register("GET /api/v1/dashboard/layouts/{id}", da.get)
+	register("PUT /api/v1/dashboard/layouts/{id}", da.update)
+	register("DELETE /api/v1/dashboard/layouts/{id}", da.delete)
+
+	// Alerts
+	register("GET /api/v1/alerts", aa.list)
+
+	// Alert Rules
+	register("GET /api/v1/alert-rules", aa.listRules)
+	register("POST /api/v1/alert-rules", aa.createRule)
+	register("PUT /api/v1/alert-rules/{id}", aa.updateRule)
+	register("DELETE /api/v1/alert-rules/{id}", aa.deleteRule)
+
+	// WebSocket
+	register("GET /api/v1/ws", hub.HandleWS)
+
+	// Static files (embedded) — inject base_path into index.html
+	staticHandler := web.StaticHandler(basePath)
+	mux.Handle("/", staticHandler)
+	if bp != "" {
+		mux.Handle(bp+"/", http.StripPrefix(bp, staticHandler))
+	}
+
+	return withMiddleware(mux)
 }
 
 // statusWriter wraps http.ResponseWriter to capture the status code.
