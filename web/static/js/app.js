@@ -82,6 +82,26 @@ document.addEventListener('alpine:init', () => {
     });
     Alpine.store('topProcessCount').load();
 
+    // Time range store for dashboard
+    Alpine.store('timeRange', {
+        range: 3600,
+        live: true,
+        label: '1h',
+        presets: [
+            { label: '5m', seconds: 300 },
+            { label: '15m', seconds: 900 },
+            { label: '30m', seconds: 1800 },
+            { label: '1h', seconds: 3600 },
+            { label: '6h', seconds: 21600 },
+            { label: '24h', seconds: 86400 },
+            { label: '7d', seconds: 604800 },
+        ],
+        select(preset) {
+            this.range = preset.seconds;
+            this.label = preset.label;
+        },
+    });
+
     // Main app state
     Alpine.data('app', () => ({
         page: 'dashboard',

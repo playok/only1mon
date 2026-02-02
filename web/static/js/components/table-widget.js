@@ -7,6 +7,7 @@ class TableWidget {
         this.type = 'table'; // distinguish from ChartWidget
         this.values = {}; // metric_name → latest value
         this.metricMeta = options.metricMeta || {}; // metric_name → { description, description_ko, unit }
+        this.live = options.live !== undefined ? options.live : true;
         this.table = null;
         this.rows = {};
 
@@ -90,6 +91,7 @@ class TableWidget {
 
     _bindWS() {
         this._wsHandler = (samples) => {
+            if (!this.live) return;
             let updated = false;
             for (const s of samples) {
                 if (this.rows[s.metric_name] === undefined) continue;
@@ -133,10 +135,15 @@ class TableWidget {
         }
     }
 
-    async loadHistory(hours = 1) {
+    reloadWithRange(seconds, live) {
+        this.live = live;
+        this.loadHistory(seconds);
+    }
+
+    async loadHistory(seconds = 3600) {
         // Load the latest value for each metric
         const now = Math.floor(Date.now() / 1000);
-        const from = now - hours * 3600;
+        const from = now - seconds;
         try {
             const samples = await API.queryMetrics(this.metricNames.join(','), from, now, 0);
             if (!samples || samples.length === 0) return;

@@ -6,6 +6,7 @@ class ChartWidget {
         this.metricNames = options.metrics || [];
         this.metricMeta = options.metricMeta || {};
         this.fixedAxis = options.fixedAxis || false;
+        this.live = options.live !== undefined ? options.live : true;
         this.maxPoints = options.maxPoints || 300;
         this.data = [[]]; // [timestamps, ...series]
         this.plot = null;
@@ -230,6 +231,7 @@ class ChartWidget {
 
     _bindWS() {
         this._wsHandler = (samples) => {
+            if (!this.live) return;
             let updated = false;
             for (const s of samples) {
                 const seriesIdx = this.seriesMap[s.metric_name];
@@ -311,9 +313,14 @@ class ChartWidget {
         }
     }
 
-    async loadHistory(hours = 1) {
+    reloadWithRange(seconds, live) {
+        this.live = live;
+        this.loadHistory(seconds);
+    }
+
+    async loadHistory(seconds = 3600) {
         const now = Math.floor(Date.now() / 1000);
-        const from = now - hours * 3600;
+        const from = now - seconds;
         try {
             const samples = await API.queryMetrics(this.metricNames.join(','), from, now, 0);
             if (!samples || samples.length === 0) return;

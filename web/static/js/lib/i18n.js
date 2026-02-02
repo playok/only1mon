@@ -115,6 +115,9 @@ const translations = {
         'toast.rule_save_fail': 'Failed to save rule',
         'toast.rule_delete_fail': 'Failed to delete rule',
 
+        // Time range
+        'time.live': 'Live',
+
         // Layout save prompt
         'prompt.layout_name': 'Layout name:',
     },
@@ -229,6 +232,9 @@ const translations = {
         'toast.rule_deleted': '규칙이 삭제되었습니다',
         'toast.rule_save_fail': '규칙 저장에 실패했습니다',
         'toast.rule_delete_fail': '규칙 삭제에 실패했습니다',
+
+        // Time range
+        'time.live': '실시간',
 
         // Layout save prompt
         'prompt.layout_name': '레이아웃 이름:',

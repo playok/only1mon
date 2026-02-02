@@ -4,6 +4,7 @@ class TopWidget {
         this.container = container;
         this.title = options.title || 'System Top';
         this.type = 'top';
+        this.live = options.live !== undefined ? options.live : true;
         this._topN = 0;
         this.metricNames = [];
         this.values = {};
@@ -170,6 +171,7 @@ class TopWidget {
 
     _bindWS() {
         this._wsHandler = (samples) => {
+            if (!this.live) return;
             // Check if topN changed and re-subscribe if needed
             if (this._rebuildMetricNames()) {
                 window.wsClient.subscribe(this.metricNames);
@@ -201,9 +203,14 @@ class TopWidget {
         }
     }
 
-    async loadHistory(hours = 1) {
+    reloadWithRange(seconds, live) {
+        this.live = live;
+        this.loadHistory(seconds);
+    }
+
+    async loadHistory(seconds = 3600) {
         const now = Math.floor(Date.now() / 1000);
-        const from = now - hours * 3600;
+        const from = now - seconds;
         try {
             const samples = await API.queryMetrics(this.metricNames.join(','), from, now, 0);
             if (!samples || samples.length === 0) return;

@@ -68,6 +68,18 @@
                     </template>
                 </select>
                 <span class="spacer"></span>
+                <div class="time-range-group">
+                    <template x-for="p in $store.timeRange.presets" :key="p.label">
+                        <button class="time-range-btn"
+                                :class="{ active: $store.timeRange.label === p.label }"
+                                @click="$store.timeRange.select(p)"
+                                x-text="p.label"></button>
+                    </template>
+                </div>
+                <label class="time-range-live">
+                    <input type="checkbox" x-model="$store.timeRange.live">
+                    <span x-text="$store.i18n.t('time.live')"></span>
+                </label>
                 <button class="btn btn-sm" @click="window.dashboardSaveLayout()" x-text="$store.i18n.t('dash.save')"></button>
                 <button class="btn btn-sm btn-primary" @click="window.dashboardShowAddWidget()" x-text="$store.i18n.t('dash.add_widget')"></button>
             </div>

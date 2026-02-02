@@ -46,6 +46,10 @@ document.addEventListener('alpine:init', () => {
                 }
             });
 
+            // Watch time range changes
+            this.$watch('$store.timeRange.range', () => this._reloadAllWidgets());
+            this.$watch('$store.timeRange.live', () => this._reloadAllWidgets());
+
             // Close context menu on any click
             document.addEventListener('click', () => {
                 this.ctxMenu.show = false;
@@ -71,6 +75,23 @@ document.addEventListener('alpine:init', () => {
 
                 this.fetchLayouts();
             });
+        },
+
+        _reloadAllWidgets() {
+            const tr = Alpine.store('timeRange');
+            for (const w of Object.values(this.widgets)) {
+                if (w.reloadWithRange) {
+                    w.reloadWithRange(tr.range, tr.live);
+                }
+            }
+        },
+
+        _currentRange() {
+            return Alpine.store('timeRange').range;
+        },
+
+        _currentLive() {
+            return Alpine.store('timeRange').live;
         },
 
         get store() {
@@ -202,8 +223,8 @@ document.addEventListener('alpine:init', () => {
                 if (container) {
                     // Clear old chart DOM
                     container.innerHTML = '';
-                    const chart = new ChartWidget(container, { title, metrics, metricMeta: editMetricMeta, fixedAxis: this.editFixedAxis });
-                    chart.loadHistory(1);
+                    const chart = new ChartWidget(container, { title, metrics, metricMeta: editMetricMeta, fixedAxis: this.editFixedAxis, live: this._currentLive() });
+                    chart.loadHistory(this._currentRange());
                     this.widgets[id] = chart;
                 }
             });
@@ -276,8 +297,9 @@ document.addEventListener('alpine:init', () => {
                         metrics: metrics,
                         metricMeta: metricMeta,
                         fixedAxis: this.newWidget.fixedAxis,
+                        live: this._currentLive(),
                     });
-                    chart.loadHistory(1);
+                    chart.loadHistory(this._currentRange());
                     this.widgets[id] = chart;
                 }
             });
@@ -319,8 +341,9 @@ document.addEventListener('alpine:init', () => {
                         title: title,
                         metrics: metrics,
                         metricMeta: metricMeta,
+                        live: this._currentLive(),
                     });
-                    widget.loadHistory(1);
+                    widget.loadHistory(this._currentRange());
                     this.widgets[id] = widget;
                 }
             });
@@ -359,8 +382,8 @@ document.addEventListener('alpine:init', () => {
             this.$nextTick(() => {
                 const container = document.getElementById('chart-' + id);
                 if (container) {
-                    const widget = new TopWidget(container, { title });
-                    widget.loadHistory(1);
+                    const widget = new TopWidget(container, { title, live: this._currentLive() });
+                    widget.loadHistory(this._currentRange());
                     this.widgets[id] = widget;
                 }
             });
@@ -391,8 +414,8 @@ document.addEventListener('alpine:init', () => {
             this.$nextTick(() => {
                 const container = document.getElementById('chart-' + id);
                 if (container) {
-                    const widget = new IoTopWidget(container, { title });
-                    widget.loadHistory(1);
+                    const widget = new IoTopWidget(container, { title, live: this._currentLive() });
+                    widget.loadHistory(this._currentRange());
                     this.widgets[id] = widget;
                 }
             });
@@ -499,19 +522,23 @@ document.addEventListener('alpine:init', () => {
                             const container = document.getElementById('chart-' + id);
                             if (container) {
                                 let widget;
+                                const live = this._currentLive();
                                 if (meta.type === 'top') {
                                     widget = new TopWidget(container, {
                                         title: meta.title,
+                                        live: live,
                                     });
                                 } else if (meta.type === 'iotop') {
                                     widget = new IoTopWidget(container, {
                                         title: meta.title,
+                                        live: live,
                                     });
                                 } else if (meta.type === 'table') {
                                     widget = new TableWidget(container, {
                                         title: meta.title,
                                         metrics: meta.metrics,
                                         metricMeta: metricMeta,
+                                        live: live,
                                     });
                                 } else {
                                     widget = new ChartWidget(container, {
@@ -519,9 +546,10 @@ document.addEventListener('alpine:init', () => {
                                         metrics: meta.metrics,
                                         metricMeta: metricMeta,
                                         fixedAxis: meta.fixedAxis || false,
+                                        live: live,
                                     });
                                 }
-                                widget.loadHistory(1);
+                                widget.loadHistory(this._currentRange());
                                 this.widgets[id] = widget;
                             }
                         });

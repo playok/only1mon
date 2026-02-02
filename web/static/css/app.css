@@ -306,6 +306,60 @@ a:hover { color: var(--accent-light); }
     box-shadow: var(--glow-accent);
 }
 
+/* --- Time Range Controls --- */
+.time-range-group {
+    display: inline-flex;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.time-range-btn {
+    background: transparent;
+    border: none;
+    border-right: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+}
+
+.time-range-btn:last-child {
+    border-right: none;
+}
+
+.time-range-btn:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+}
+
+.time-range-btn.active {
+    color: var(--accent);
+    background: var(--accent-bg);
+}
+
+.time-range-live {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    user-select: none;
+    margin-left: 4px;
+}
+
+.time-range-live input[type="checkbox"] {
+    accent-color: var(--success);
+    width: 14px;
+    height: 14px;
+    cursor: pointer;
+}
+
 /* --- Main scrollable content --- */
 .app-main {
     flex: 1;
