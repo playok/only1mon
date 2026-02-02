@@ -13,10 +13,11 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('dashboardPage', () => ({
         grid: null,
         widgets: {},
-        newWidget: { title: '', metrics: '' },
+        newWidget: { title: '', metrics: '', fixedAxis: false },
         metricGroups: [],
         selectedMetrics: [],
         editTitle: '',
+        editFixedAxis: false,
 
         // Context menu state
         ctxMenu: { show: false, x: 0, y: 0, widgetId: null },
@@ -161,6 +162,7 @@ document.addEventListener('alpine:init', () => {
             const chart = this.widgets[id];
             this.store.editWidgetId = id;
             this.editTitle = chart.title;
+            this.editFixedAxis = chart.fixedAxis || false;
             this.selectedMetrics = [...chart.metricNames];
             this.store.showEditWidget = true;
         },
@@ -200,7 +202,7 @@ document.addEventListener('alpine:init', () => {
                 if (container) {
                     // Clear old chart DOM
                     container.innerHTML = '';
-                    const chart = new ChartWidget(container, { title, metrics, metricMeta: editMetricMeta });
+                    const chart = new ChartWidget(container, { title, metrics, metricMeta: editMetricMeta, fixedAxis: this.editFixedAxis });
                     chart.loadHistory(1);
                     this.widgets[id] = chart;
                 }
@@ -273,6 +275,7 @@ document.addEventListener('alpine:init', () => {
                         title: title,
                         metrics: metrics,
                         metricMeta: metricMeta,
+                        fixedAxis: this.newWidget.fixedAxis,
                     });
                     chart.loadHistory(1);
                     this.widgets[id] = chart;
@@ -281,7 +284,7 @@ document.addEventListener('alpine:init', () => {
 
             this.store.showAddWidget = false;
             this.selectedMetrics = [];
-            this.newWidget = { title: '', metrics: '' };
+            this.newWidget = { title: '', metrics: '', fixedAxis: false };
         },
 
         addTableWidget(sub) {
@@ -414,6 +417,7 @@ document.addEventListener('alpine:init', () => {
                     title: w.title,
                     metrics: w.metricNames,
                     type: w.type || 'chart',
+                    fixedAxis: w.fixedAxis || false,
                 };
                 if (w.metricMeta && Object.keys(w.metricMeta).length > 0) {
                     widgetMeta[id].metricMeta = w.metricMeta;
@@ -514,6 +518,7 @@ document.addEventListener('alpine:init', () => {
                                         title: meta.title,
                                         metrics: meta.metrics,
                                         metricMeta: metricMeta,
+                                        fixedAxis: meta.fixedAxis || false,
                                     });
                                 }
                                 widget.loadHistory(1);

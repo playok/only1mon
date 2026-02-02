@@ -5,6 +5,7 @@ class ChartWidget {
         this.title = options.title || 'Chart';
         this.metricNames = options.metrics || [];
         this.metricMeta = options.metricMeta || {};
+        this.fixedAxis = options.fixedAxis || false;
         this.maxPoints = options.maxPoints || 300;
         this.data = [[]]; // [timestamps, ...series]
         this.plot = null;
@@ -168,6 +169,7 @@ class ChartWidget {
             legend: { show: false },
             scales: {
                 x: { time: false },
+                ...(self.fixedAxis ? { y: { range: [0, 100] } } : {}),
             },
             hooks: {
                 setCursor: [(u) => { self._updateTooltip(u); }],

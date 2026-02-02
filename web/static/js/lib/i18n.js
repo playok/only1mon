@@ -42,6 +42,7 @@ const translations = {
         'widget.add_iotop': 'IoTop',
         'widget.iotop_title': 'Disk I/O Top',
         'widget.unit_prefix': 'Unit: ',
+        'widget.fixed_axis': 'Fix Y-axis range 0\u2013100%',
 
         // Metrics page
         'metrics.title': 'Collectors',
@@ -156,6 +157,7 @@ const translations = {
         'widget.add_iotop': 'IoTop',
         'widget.iotop_title': '디스크 I/O Top',
         'widget.unit_prefix': '단위: ',
+        'widget.fixed_axis': 'Y축 범위 0~100% 고정',
 
         // Metrics page
         'metrics.title': '수집기',
