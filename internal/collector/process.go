@@ -3,7 +3,6 @@ package collector
 import (
 	"context"
 	"fmt"
-	"runtime"
 	"sort"
 	"time"
 
@@ -76,11 +75,6 @@ func (c *processCollector) Collect(ctx context.Context) ([]model.MetricSample, e
 
 	samples = append(samples, makeSample(now, "process", "proc.total_count", float64(len(procs))))
 
-	numCPU := float64(runtime.NumCPU())
-	if numCPU < 1 {
-		numCPU = 1
-	}
-
 	elapsed := float64(now - c.prevTime)
 	if c.prevTime == 0 || elapsed <= 0 {
 		elapsed = 0
@@ -96,7 +90,7 @@ func (c *processCollector) Collect(ctx context.Context) ([]model.MetricSample, e
 		info := procInfo{
 			pid:    p.Pid,
 			name:   name,
-			cpuPct: cpuPct / numCPU,
+			cpuPct: cpuPct,
 			memPct: memPct,
 		}
 

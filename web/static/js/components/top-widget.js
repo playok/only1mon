@@ -115,7 +115,7 @@ class TopWidget {
             const cpu = v[`proc.top_cpu.${i}.cpu_pct`];
             const mem = v[`proc.top_cpu.${i}.mem_pct`];
             if (pid == null) continue;
-            const cpuColor = (cpu || 0) > 50 ? 'top-val-crit' : (cpu || 0) > 20 ? 'top-val-warn' : 'top-val-ok';
+            const cpuColor = (cpu || 0) > 100 ? 'top-val-crit' : (cpu || 0) > 50 ? 'top-val-warn' : 'top-val-ok';
             procRows += `<tr>
                 <td class="top-proc-pid">${Math.round(pid)}</td>
                 <td class="top-proc-name">${this._escapeHtml(name)}</td>
