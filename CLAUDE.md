@@ -4,6 +4,8 @@ Go + Alpine.js 기반 경량 시스템 모니터링 대시보드.
 
 ## 빌드 & 실행
 
+### Linux / macOS (Make)
+
 ```bash
 make build           # build/ 디렉토리에 바이너리 생성
 make start           # 빌드 후 데몬 시작
@@ -14,14 +16,30 @@ make dev             # go run 으로 개발 실행
 make clean           # build/, DB, PID, 로그 삭제
 ```
 
+### Windows (build.cmd)
+
+```cmd
+build.cmd              # 빌드 (build\only1mon.exe)
+build.cmd run          # 빌드 후 포그라운드 실행
+build.cmd dev          # go run 으로 개발 실행
+build.cmd clean        # build\, DB, PID, 로그 삭제
+build.cmd build-all    # 크로스 컴파일 (linux/darwin/windows, amd64/arm64)
+```
+
+> Windows에서는 데몬 모드(start/stop/status)를 지원하지 않으며, `run`으로 포그라운드 실행합니다.
+
 ### 주요 명령어
 
 ```bash
 # 빌드
-make build                           # CGO_ENABLED=0, 버전 태그 자동 삽입
+make build                           # CGO_ENABLED=0, 버전 태그 자동 삽입 (Linux/macOS)
+build.cmd build                      # CGO_ENABLED=0, 버전 태그 자동 삽입 (Windows)
 go vet ./...                         # 정적 분석
 go test ./...                        # 테스트
 make build-all                       # 크로스 컴파일 (linux/darwin, amd64/arm64)
+build.cmd build-all                  # 크로스 컴파일 (linux/darwin/windows, amd64/arm64)
+goreleaser build --snapshot --clean  # GoReleaser 로컬 스냅샷 빌드
+goreleaser release --skip=publish    # GoReleaser 릴리스 빌드 (업로드 생략)
 
 # 실행
 only1mon start                       # 데몬 시작 (백그라운드)

@@ -23,12 +23,20 @@ Single binary, zero external dependencies, real-time WebSocket streaming.
 ### Build
 
 ```bash
+# Linux / macOS
 git clone https://github.com/playok/only1mon.git
 cd only1mon
 make build
 ```
 
-Requires Go 1.22+. Produces `build/only1mon`.
+```cmd
+# Windows
+git clone https://github.com/playok/only1mon.git
+cd only1mon
+build.cmd
+```
+
+Requires Go 1.22+. Produces `build/only1mon` (Linux/macOS) or `build\only1mon.exe` (Windows).
 
 ### Run
 
@@ -36,10 +44,15 @@ Requires Go 1.22+. Produces `build/only1mon`.
 # Foreground
 ./build/only1mon run
 
-# Daemon
+# Daemon (Linux/macOS only)
 ./build/only1mon start
 ./build/only1mon status
 ./build/only1mon stop
+```
+
+```cmd
+# Windows (foreground only)
+build\only1mon.exe run
 ```
 
 Open http://127.0.0.1:9923 in your browser.
@@ -47,7 +60,16 @@ Open http://127.0.0.1:9923 in your browser.
 ### Cross-compile
 
 ```bash
-make build-all    # linux/darwin x amd64/arm64
+make build-all        # linux/darwin x amd64/arm64
+```
+
+```cmd
+build.cmd build-all   # linux/darwin/windows x amd64/arm64
+```
+
+```bash
+# GoReleaser
+goreleaser build --snapshot --clean   # all platforms via GoReleaser
 ```
 
 ## Configuration
@@ -212,8 +234,17 @@ GET    /api/v1/ws
 ## Development
 
 ```bash
+# Linux / macOS
 make dev             # go run (foreground, auto-recompile not included)
 make run             # build + run foreground
+go vet ./...         # static analysis
+go test ./...        # run tests
+```
+
+```cmd
+# Windows
+build.cmd dev        # go run (foreground)
+build.cmd run        # build + run foreground
 go vet ./...         # static analysis
 go test ./...        # run tests
 ```
