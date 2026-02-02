@@ -68,10 +68,23 @@
                     </template>
                 </select>
                 <span class="spacer"></span>
+                <div class="time-range-custom">
+                    <input type="datetime-local" class="time-range-input"
+                           x-model="$store.timeRange.customFrom"
+                           :max="$store.timeRange.customTo || undefined">
+                    <span class="time-range-sep">–</span>
+                    <input type="datetime-local" class="time-range-input"
+                           x-model="$store.timeRange.customTo"
+                           :min="$store.timeRange.customFrom || undefined">
+                    <button class="time-range-apply"
+                            :disabled="!$store.timeRange.customFrom || !$store.timeRange.customTo"
+                            @click="$store.timeRange.applyCustom()"
+                            x-text="$store.i18n.t('time.apply')"></button>
+                </div>
                 <div class="time-range-group">
                     <template x-for="p in $store.timeRange.presets" :key="p.label">
                         <button class="time-range-btn"
-                                :class="{ active: $store.timeRange.label === p.label }"
+                                :class="{ active: $store.timeRange.label === p.label && $store.timeRange.mode === 'preset' }"
                                 @click="$store.timeRange.select(p)"
                                 x-text="p.label"></button>
                     </template>

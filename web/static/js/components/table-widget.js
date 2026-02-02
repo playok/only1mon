@@ -135,17 +135,19 @@ class TableWidget {
         }
     }
 
-    reloadWithRange(seconds, live) {
+    reloadWithRange(from, to, live) {
         this.live = live;
-        this.loadHistory(seconds);
+        this.loadHistory(from, to);
     }
 
-    async loadHistory(seconds = 3600) {
-        // Load the latest value for each metric
-        const now = Math.floor(Date.now() / 1000);
-        const from = now - seconds;
+    async loadHistory(from, to) {
+        if (from === undefined) {
+            const now = Math.floor(Date.now() / 1000);
+            from = now - 3600;
+            to = now;
+        }
         try {
-            const samples = await API.queryMetrics(this.metricNames.join(','), from, now, 0);
+            const samples = await API.queryMetrics(this.metricNames.join(','), from, to, 0);
             if (!samples || samples.length === 0) return;
             // Take the latest value per metric
             for (const s of samples) {

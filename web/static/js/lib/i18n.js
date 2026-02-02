@@ -117,6 +117,7 @@ const translations = {
 
         // Time range
         'time.live': 'Live',
+        'time.apply': 'Apply',
 
         // Layout save prompt
         'prompt.layout_name': 'Layout name:',
@@ -235,6 +236,7 @@ const translations = {
 
         // Time range
         'time.live': '실시간',
+        'time.apply': '조회',
 
         // Layout save prompt
         'prompt.layout_name': '레이아웃 이름:',

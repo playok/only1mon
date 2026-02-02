@@ -87,6 +87,10 @@ document.addEventListener('alpine:init', () => {
         range: 3600,
         live: true,
         label: '1h',
+        mode: 'preset',    // 'preset' or 'custom'
+        customFrom: '',    // datetime-local string
+        customTo: '',
+        _v: 0,             // change counter for watchers
         presets: [
             { label: '5m', seconds: 300 },
             { label: '15m', seconds: 900 },
@@ -94,11 +98,31 @@ document.addEventListener('alpine:init', () => {
             { label: '1h', seconds: 3600 },
             { label: '6h', seconds: 21600 },
             { label: '24h', seconds: 86400 },
-            { label: '7d', seconds: 604800 },
         ],
         select(preset) {
+            this.mode = 'preset';
             this.range = preset.seconds;
             this.label = preset.label;
+            this._v++;
+        },
+        applyCustom() {
+            if (!this.customFrom || !this.customTo) return;
+            this.mode = 'custom';
+            this.label = '';
+            this.live = false;
+            this._v++;
+        },
+        getFrom() {
+            if (this.mode === 'custom' && this.customFrom) {
+                return Math.floor(new Date(this.customFrom).getTime() / 1000);
+            }
+            return Math.floor(Date.now() / 1000) - this.range;
+        },
+        getTo() {
+            if (this.mode === 'custom' && this.customTo) {
+                return Math.floor(new Date(this.customTo).getTime() / 1000);
+            }
+            return Math.floor(Date.now() / 1000);
         },
     });
 

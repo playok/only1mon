@@ -47,7 +47,7 @@ document.addEventListener('alpine:init', () => {
             });
 
             // Watch time range changes
-            this.$watch('$store.timeRange.range', () => this._reloadAllWidgets());
+            this.$watch('$store.timeRange._v', () => this._reloadAllWidgets());
             this.$watch('$store.timeRange.live', () => this._reloadAllWidgets());
 
             // Close context menu on any click
@@ -79,15 +79,21 @@ document.addEventListener('alpine:init', () => {
 
         _reloadAllWidgets() {
             const tr = Alpine.store('timeRange');
+            const from = tr.getFrom();
+            const to = tr.getTo();
             for (const w of Object.values(this.widgets)) {
                 if (w.reloadWithRange) {
-                    w.reloadWithRange(tr.range, tr.live);
+                    w.reloadWithRange(from, to, tr.live);
                 }
             }
         },
 
-        _currentRange() {
-            return Alpine.store('timeRange').range;
+        _currentFrom() {
+            return Alpine.store('timeRange').getFrom();
+        },
+
+        _currentTo() {
+            return Alpine.store('timeRange').getTo();
         },
 
         _currentLive() {
@@ -224,7 +230,7 @@ document.addEventListener('alpine:init', () => {
                     // Clear old chart DOM
                     container.innerHTML = '';
                     const chart = new ChartWidget(container, { title, metrics, metricMeta: editMetricMeta, fixedAxis: this.editFixedAxis, live: this._currentLive() });
-                    chart.loadHistory(this._currentRange());
+                    chart.loadHistory(this._currentFrom(), this._currentTo());
                     this.widgets[id] = chart;
                 }
             });
@@ -299,7 +305,7 @@ document.addEventListener('alpine:init', () => {
                         fixedAxis: this.newWidget.fixedAxis,
                         live: this._currentLive(),
                     });
-                    chart.loadHistory(this._currentRange());
+                    chart.loadHistory(this._currentFrom(), this._currentTo());
                     this.widgets[id] = chart;
                 }
             });
@@ -343,7 +349,7 @@ document.addEventListener('alpine:init', () => {
                         metricMeta: metricMeta,
                         live: this._currentLive(),
                     });
-                    widget.loadHistory(this._currentRange());
+                    widget.loadHistory(this._currentFrom(), this._currentTo());
                     this.widgets[id] = widget;
                 }
             });
@@ -383,7 +389,7 @@ document.addEventListener('alpine:init', () => {
                 const container = document.getElementById('chart-' + id);
                 if (container) {
                     const widget = new TopWidget(container, { title, live: this._currentLive() });
-                    widget.loadHistory(this._currentRange());
+                    widget.loadHistory(this._currentFrom(), this._currentTo());
                     this.widgets[id] = widget;
                 }
             });
@@ -415,7 +421,7 @@ document.addEventListener('alpine:init', () => {
                 const container = document.getElementById('chart-' + id);
                 if (container) {
                     const widget = new IoTopWidget(container, { title, live: this._currentLive() });
-                    widget.loadHistory(this._currentRange());
+                    widget.loadHistory(this._currentFrom(), this._currentTo());
                     this.widgets[id] = widget;
                 }
             });
@@ -549,7 +555,7 @@ document.addEventListener('alpine:init', () => {
                                         live: live,
                                     });
                                 }
-                                widget.loadHistory(this._currentRange());
+                                widget.loadHistory(this._currentFrom(), this._currentTo());
                                 this.widgets[id] = widget;
                             }
                         });
