@@ -22,8 +22,8 @@ func New() *EBPFCollector {
 	return c
 }
 
-func (c *EBPFCollector) ID() string    { return "ebpf" }
-func (c *EBPFCollector) Name() string  { return "eBPF" }
+func (c *EBPFCollector) ID() string   { return "ebpf" }
+func (c *EBPFCollector) Name() string { return "eBPF" }
 func (c *EBPFCollector) Description() string {
 	return "Kernel-level latency analysis: block I/O, TCP connect, scheduler runqueue"
 }
@@ -45,7 +45,7 @@ func (c *EBPFCollector) MetricNames() []string {
 
 func (c *EBPFCollector) Collect(ctx context.Context) ([]model.MetricSample, error) {
 	if !c.available {
-		return nil, fmt.Errorf("eBPF not available")
+		return nil, nil
 	}
 
 	now := time.Now().Unix()

@@ -13,15 +13,17 @@ type kernelCollector struct{}
 
 func NewKernelCollector() Collector { return &kernelCollector{} }
 
-func (c *kernelCollector) ID() string          { return "kernel" }
-func (c *kernelCollector) Name() string        { return "Kernel" }
-func (c *kernelCollector) Description() string { return "Kernel stats: procs running/blocked, load misc" }
+func (c *kernelCollector) ID() string   { return "kernel" }
+func (c *kernelCollector) Name() string { return "Kernel" }
+func (c *kernelCollector) Description() string {
+	return "Kernel stats: procs running/blocked, load misc"
+}
 func (c *kernelCollector) Impact() model.ImpactLevel { return model.ImpactNone }
-func (c *kernelCollector) Warning() string     { return "" }
+func (c *kernelCollector) Warning() string           { return "" }
 
 func (c *kernelCollector) MetricNames() []string {
 	return []string{
-		"kernel.procs_running", "kernel.procs_blocked",
+		"kernel.procs_running", "kernel.procs_blocked", "kernel.goroutines",
 	}
 }
 

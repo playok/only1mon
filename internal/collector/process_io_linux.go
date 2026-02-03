@@ -29,5 +29,8 @@ func readProcIO(pid int32) (uint64, uint64, bool) {
 			writeBytes, _ = strconv.ParseUint(v, 10, 64)
 		}
 	}
+	if err := scanner.Err(); err != nil {
+		return 0, 0, false
+	}
 	return readBytes, writeBytes, true
 }

@@ -33,7 +33,7 @@ make build
 # Windows
 git clone https://github.com/playok/only1mon.git
 cd only1mon
-build.cmd
+go build -o build\only1mon.exe ./cmd/only1mon
 ```
 
 Requires Go 1.22+. Produces `build/only1mon` (Linux/macOS) or `build\only1mon.exe` (Windows).
@@ -64,7 +64,7 @@ make build-all        # linux/darwin x amd64/arm64
 ```
 
 ```cmd
-build.cmd build-all   # linux/darwin/windows x amd64/arm64
+go build -o build\only1mon.exe ./cmd/only1mon   # linux/darwin/windows x amd64/arm64 via GoReleaser
 ```
 
 ```bash
@@ -243,10 +243,11 @@ go test ./...        # run tests
 
 ```cmd
 # Windows
-build.cmd dev        # go run (foreground)
-build.cmd run        # build + run foreground
-go vet ./...         # static analysis
-go test ./...        # run tests
+go build -o build\only1mon.exe ./cmd/only1mon   # go run (foreground)
+go build -o build\only1mon.exe ./cmd/only1mon   # build + run foreground
+go run ./cmd/only1mon run                       # go run (foreground)
+go vet ./...                                     # static analysis
+go test ./...                                    # run tests
 ```
 
 ### Adding a Collector

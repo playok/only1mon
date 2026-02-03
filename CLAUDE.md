@@ -20,14 +20,13 @@ make dev             # go run 으로 개발 실행
 make clean           # build/, DB, PID, 로그 삭제
 ```
 
-### Windows (build.cmd)
+### Windows (Go)
 
 ```cmd
-build.cmd              # 빌드 (build\only1mon.exe)
-build.cmd run          # 빌드 후 포그라운드 실행
-build.cmd dev          # go run 으로 개발 실행
-build.cmd clean        # build\, DB, PID, 로그 삭제
-build.cmd build-all    # 크로스 컴파일 (linux/darwin/windows, amd64/arm64)
+go build -o build\only1mon.exe ./cmd/only1mon  # 빌드 (build\only1mon.exe)
+go build -o build\only1mon.exe ./cmd/only1mon && build\only1mon.exe run  # 빌드 후 포그라운드 실행
+go run ./cmd/only1mon run                      # go run 으로 개발 실행
+# 크로스 컴파일 (linux/darwin/windows, amd64/arm64)은 goreleaser 또는 GOOS/GOARCH로 수행
 ```
 
 > Windows에서는 데몬 모드(start/stop/status)를 지원하지 않으며, `run`으로 포그라운드 실행합니다.
@@ -37,22 +36,12 @@ build.cmd build-all    # 크로스 컴파일 (linux/darwin/windows, amd64/arm64)
 ```bash
 # 빌드
 make build                           # CGO_ENABLED=0, 버전 태그 자동 삽입 (Linux/macOS)
-build.cmd build                      # CGO_ENABLED=0, 버전 태그 자동 삽입 (Windows)
+go build -o build\only1mon.exe ./cmd/only1mon  # CGO_ENABLED=0, 버전 태그 자동 삽입 (Windows)
 go vet ./...                         # 정적 분석
 go test ./...                        # 테스트
 make build-all                       # 크로스 컴파일 (linux/darwin, amd64/arm64)
-build.cmd build-all                  # 크로스 컴파일 (linux/darwin/windows, amd64/arm64)
-goreleaser build --snapshot --clean  # GoReleaser 로컬 스냅샷 빌드
+goreleaser build --snapshot --clean  # 크로스 컴파일 (linux/darwin/windows, amd64/arm64)
 goreleaser release --skip=publish    # GoReleaser 릴리스 빌드 (업로드 생략)
-
-# 실행
-only1mon start                       # 데몬 시작 (백그라운드)
-only1mon stop                        # 데몬 중지
-only1mon status                      # 데몬 상태 확인
-only1mon run                         # 포그라운드 실행
-only1mon version                     # 버전 출력
-only1mon -nginx                      # nginx 리버스 프록시 설정 출력
-only1mon start -config /etc/only1mon/config.yaml  # 설정 파일 지정
 ```
 
 ### 설정

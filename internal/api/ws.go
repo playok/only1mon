@@ -6,9 +6,15 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/playok/only1mon/internal/model"
 	"nhooyr.io/websocket"
+)
+
+const (
+	pingInterval = 30 * time.Second
+	readTimeout  = 60 * time.Second
 )
 
 // Hub manages WebSocket connections and broadcasts.
@@ -20,11 +26,11 @@ type Hub struct {
 }
 
 type wsClient struct {
-	hub    *Hub
-	conn   *websocket.Conn
-	send   chan []byte
-	subs   map[string]bool // subscribed metric prefixes
-	mu     sync.Mutex
+	hub  *Hub
+	conn *websocket.Conn
+	send chan []byte
+	subs map[string]bool // subscribed metric prefixes
+	mu   sync.Mutex
 }
 
 // NewHub creates a new WebSocket hub.
@@ -124,6 +130,21 @@ func (c *wsClient) hasMatchingSub(samples []model.MetricSample) bool {
 	return false
 }
 
+func (c *wsClient) pingLoop(ctx context.Context) {
+	ticker := time.NewTicker(pingInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if err := c.conn.Ping(ctx); err != nil {
+				return
+			}
+		}
+	}
+}
+
 // HandleWS handles WebSocket upgrade and manages the connection.
 func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
@@ -144,6 +165,7 @@ func (h *Hub) HandleWS(w http.ResponseWriter, r *http.Request) {
 	h.reg <- client
 
 	ctx := r.Context()
+	go client.pingLoop(ctx)
 	go client.writePump(ctx)
 	client.readPump(ctx)
 }
@@ -155,7 +177,9 @@ func (c *wsClient) readPump(ctx context.Context) {
 	}()
 
 	for {
-		_, data, err := c.conn.Read(ctx)
+		readCtx, cancel := context.WithTimeout(ctx, readTimeout)
+		_, data, err := c.conn.Read(readCtx)
+		cancel()
 		if err != nil {
 			return
 		}

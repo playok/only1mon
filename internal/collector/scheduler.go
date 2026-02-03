@@ -142,15 +142,39 @@ func (s *Scheduler) collectAll(ctx context.Context) {
 		return
 	}
 
-	var allSamples []model.MetricSample
+	type result struct {
+		samples []model.MetricSample
+		err     error
+		id      string
+	}
+
+	results := make(chan result, len(collectors))
+	var wg sync.WaitGroup
 
 	for _, c := range collectors {
-		samples, err := c.Collect(ctx)
-		if err != nil {
-			log.Printf("[scheduler] collector %s error: %v", c.ID(), err)
+		wg.Add(1)
+		go func(col Collector) {
+			defer wg.Done()
+			collectCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+			defer cancel()
+
+			samples, err := col.Collect(collectCtx)
+			results <- result{samples: samples, err: err, id: col.ID()}
+		}(c)
+	}
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	var allSamples []model.MetricSample
+	for r := range results {
+		if r.err != nil {
+			log.Printf("[scheduler] collector %s error: %v", r.id, r.err)
 			continue
 		}
-		allSamples = append(allSamples, samples...)
+		allSamples = append(allSamples, r.samples...)
 	}
 
 	if len(allSamples) == 0 {
